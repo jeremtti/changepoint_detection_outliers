@@ -2,13 +2,12 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-from piecewise import PiecewiseQuadratic, BiWeight, QFunction
+from piecewise import PiecewiseQuadratic, QFunction, BiWeight, Huber, L2Loss, L1Loss
 
 
 
-def rfpop(y, K, beta, verbose=False):   
+def rfpop(y, loss, beta, verbose=False):   
     
-    n = y.shape[0]
     Q_star_intervals = [(np.min(y), np.max(y))]
     Q_star_coefficients = [np.array([0.,0.,0.])]
     tau_Q_star = [0]
@@ -17,8 +16,8 @@ def rfpop(y, K, beta, verbose=False):
     
     cp = []
     
-    for t in tqdm(range(n)):
-        Q = algo2(Q_star, K, y, t)
+    for t in tqdm(range(y.shape[0])):
+        Q = algo2(Q_star, loss, y, t)
         Q_t, tau_t = algo3(Q)
         cp.append((Q_t, tau_t))
         C = Q_t + beta
@@ -49,8 +48,15 @@ def show_Q_Q_star(Q, Q_star, y):
     
     
 
-def algo2(Q_star, K, y, t):    
-    gamma = BiWeight(y[t], K, np.min(y), np.max(y))
+def algo2(Q_star, loss, y, t):
+    if loss.loss_type == 'biweight':
+        gamma = BiWeight(y[t], loss.K, np.min(y), np.max(y))
+    elif loss.loss_type == 'huber':
+        gamma = Huber(y[t], loss.K, np.min(y), np.max(y))
+    elif loss.loss_type == 'l2':
+        gamma = L2Loss(y[t], np.min(y), np.max(y))
+    elif loss.loss_type == 'l1':
+        gamma = L1Loss(y[t], np.min(y), np.max(y))
     
     intervals_Q = []
     coefficients_Q = []

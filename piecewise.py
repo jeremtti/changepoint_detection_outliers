@@ -57,28 +57,6 @@ class PiecewiseQuadratic:
                     roots = [(-b+np.sqrt(delta))/(2*a), (-b-np.sqrt(delta))/(2*a)]
         return [root for root in roots if root > r and root < l]
                 
-    
-class BiWeight(PiecewiseQuadratic):
-    
-    def __init__(self, y, K, y_min, y_max):
-        """ The bi-weight is defined as:
-            gamma(theta) = (y-theta)^2 if |y-theta| <= K
-            gamma(theta) = K^2 otherwise
-        """
-        if y_min < y-K and y+K < y_max:
-            intervals = [(y_min, y-K), (y-K, y+K), (y+K, y_max)]
-            coefficients = [np.array([0,0,K**2]), np.array([1, -2*y, y**2]), np.array([0,0,K**2])]
-        elif y_min >= y-K and y+K < y_max:
-            intervals = [(y_min, y+K), (y+K, y_max)]
-            coefficients = [np.array([1, -2*y, y**2]), np.array([0,0,K**2])]
-        elif y_min < y-K and y+K >= y_max:
-            intervals = [(y_min, y-K), (y-K, y_max)]
-            coefficients = [np.array([0,0,K**2]), np.array([1, -2*y, y**2])]
-        else:
-            intervals = [(y_min, y_max)]
-            coefficients = [np.array([1, -2*y, y**2])]
-        PiecewiseQuadratic.__init__(self, intervals, coefficients)
-        
 
 class QFunction(PiecewiseQuadratic):
     
@@ -102,3 +80,91 @@ class QFunction(PiecewiseQuadratic):
         self.intervals = new_intervals
         self.coefficients = new_coefficients
         self.taus = new_taus
+    
+
+class LossFunction(PiecewiseQuadratic):
+    
+    def __init__(self, loss_type, intervals, coefficients):
+        self.loss_type = loss_type
+        PiecewiseQuadratic.__init__(self, intervals, coefficients)
+
+
+class BiWeight(LossFunction):
+    
+    def __init__(self, y, K, y_min, y_max):
+        """ The bi-weight is defined as:
+            gamma(theta) = (y-theta)^2 if |y-theta| <= K
+            gamma(theta) = K^2 otherwise
+        """
+        if y_min < y-K and y+K < y_max:
+            intervals = [(y_min, y-K), (y-K, y+K), (y+K, y_max)]
+            coefficients = [np.array([0,0,K**2]), np.array([1, -2*y, y**2]), np.array([0,0,K**2])]
+        elif y_min >= y-K and y+K < y_max:
+            intervals = [(y_min, y+K), (y+K, y_max)]
+            coefficients = [np.array([1, -2*y, y**2]), np.array([0,0,K**2])]
+        elif y_min < y-K and y+K >= y_max:
+            intervals = [(y_min, y-K), (y-K, y_max)]
+            coefficients = [np.array([0,0,K**2]), np.array([1, -2*y, y**2])]
+        else:
+            intervals = [(y_min, y_max)]
+            coefficients = [np.array([1, -2*y, y**2])]
+        
+        self.K = K
+        
+        LossFunction.__init__(self, "biweight", intervals, coefficients)
+
+
+class Huber(LossFunction):
+    
+    def __init__(self, y, K, y_min, y_max):
+        """ The Huber loss is defined as:
+            gamma(theta) = (y-theta)^2 if |y-theta| <= K
+            gamma(theta) = 2K|y-theta| - K^2 otherwise
+        """
+        if y_min < y-K and y+K < y_max:
+            intervals = [(y_min, y-K), (y-K, y+K), (y+K, y_max)]
+            coefficients = [np.array([0,-2*K,2*K*y-K**2]), np.array([1, -2*y, y**2]), np.array([0,2*K,-2*K*y-K**2])]
+        elif y_min >= y-K and y+K < y_max:
+            intervals = [(y_min, y+K), (y+K, y_max)]
+            coefficients = [np.array([1, -2*y, y**2]), np.array([0,2*K,-2*K*y-K**2])]
+        elif y_min < y-K and y+K >= y_max:
+            intervals = [(y_min, y-K), (y-K, y_max)]
+            coefficients = [np.array([0,-2*K,2*K*y-K**2]), np.array([1, -2*y, y**2])]
+        else:
+            intervals = [(y_min, y_max)]
+            coefficients = [np.array([1, -2*y, y**2])]
+        
+        self.K = K
+        
+        LossFunction.__init__(self, "huber", intervals, coefficients)
+
+
+class L2Loss(LossFunction):
+    
+    def __init__(self, y, y_min, y_max):
+        """ The L2 loss is defined as:
+            gamma(theta) = (y-theta)^2
+        """
+        intervals = [(y_min, y_max)]
+        coefficients = [np.array([1, -2*y, y**2])]
+        
+        LossFunction.__init__(self, "l2", intervals, coefficients)
+
+
+class L1Loss(LossFunction):
+    
+    def __init__(self, y, y_min, y_max):
+        """ The L1 loss is defined as:
+            gamma(theta) = |y-theta|
+        """
+        if y_min < y and y < y_max:
+            intervals = [(y_min, y), (y, y_max)]
+            coefficients = [np.array([0,-1,y]), np.array([0,1,-y])]
+        elif y_min >= y:
+            intervals = [(y_min, y_max)]
+            coefficients = [np.array([0,1,-y])]
+        else:
+            intervals = [(y_min, y_max)]
+            coefficients = [np.array([0,-1,y])]
+        
+        LossFunction.__init__(self, "l1", intervals, coefficients)
